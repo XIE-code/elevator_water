@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>电梯自动体检系统</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft YaHei",sans-serif;}
+body{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+  background:linear-gradient(135deg,#eef2f7 0,#e0e7ef 100%);
+}
+.container{
+  width:95%;
+  max-width:1100px;
+  background:#fff;
+  border-radius:16px;
+  box-shadow:0 10px 25px rgba(0,0,0,0.15);
+  overflow:hidden;
+}
+header{
+  background:linear-gradient(90deg,#1565c0,#42a5f5);
+  color:#fff;
+  text-align:center;
+  padding:20px;
+}
+header h1{font-size:clamp(1.6rem,4vw,2.3rem);}
+
+/* 舞台区域 */
+.stage{
+  position:relative;
+  height:600px;
+  background:linear-gradient(180deg,#f7f9fb 0,#e2e8ef 100%);
+  border:10px solid #888;
+  margin:20px;
+  border-radius:10px;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  padding:40px;
+}
+
+/* 电梯容器 */
+.elevator-box{
+  position:relative;
+  width:460px;
+  height:450px;
+}
+.elevator-box img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  border:6px solid #777;
+  border-radius:8px;
+  box-shadow:0 8px 20px rgba(0,0,0,0.15);
+}
+
+/* 电脑容器 */
+.computer {
+  position:relative;
+  width:220px;
+  height:160px;
+  background:#333;
+  border-radius:8px;
+  box-shadow:0 8px 20px rgba(0,0,0,0.3);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.computer-screen {
+  width:90%;
+  height:70%;
+  background:#111;
+  border:3px solid #555;
+  border-radius:4px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  overflow:hidden;
+  color:#0f0;
+  font-size:36px;
+  position:relative;
+}
+.computer-stand {
+  position:absolute;
+  bottom:-20px;
+  left:50%;
+  transform:translateX(-50%);
+  width:80px;
+  height:14px;
+  background:#555;
+  border-radius:4px;
+}
+
+/* 黄色文字：电脑上方报告标题 */
+.computer-title {
+  position:absolute;
+  top:-40px;
+  left:50%;
+  transform:translateX(-50%);
+  font-size:20px;
+  font-weight:bold;
+  color:#fbc02d; /* 黄色 */
+  opacity:0;
+  transition:opacity .6s;
+  white-space:nowrap;
+}
+
+/* 放大镜 + 蓝色文字 */
+.magnifier{
+  position:absolute;
+  left:140px;
+  top:160px;
+  font-size:60px;
+  opacity:0;
+  transform:scale(0.5);
+  transition:all 1s ease;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  z-index:200;
+}
+.data {
+  font-size: 22px;
+  color: #1e88e5;
+  opacity:0;
+  white-space:nowrap;
+}
+
+/* 渐显动画 */
+@keyframes fadeIn {
+  from { opacity:0; }
+  to { opacity:1; }
+}
+
+/* 报告纸 */
+.report{
+  font-size:36px;
+  opacity:0;
+  transition:all .6s;
+  position:relative;
+}
+
+/* 控制按钮 */
+.control{
+  text-align:center;
+  padding:18px;
+  background:#f5f5f5;
+  border-top:1px solid #ddd;
+}
+.btn{
+  padding:10px 26px;
+  font-size:18px;
+  border:none;
+  border-radius:50px;
+  background:linear-gradient(90deg,#1565c0,#42a5f5);
+  color:#fff;
+  cursor:pointer;
+  box-shadow:0 3px 12px rgba(0,0,0,0.2);
+  transition:transform .3s;
+}
+.btn:hover{transform:translateY(-3px);}
+
+/* 绕电梯动画 */
+@keyframes circleElevator {
+  0% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(-80px, -60px) scale(1.2); }
+  50% { transform: translate(-160px, 0) scale(1); }
+  75% { transform: translate(-80px, 60px) scale(0.8); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header><h1>电梯自动体检系统</h1></header>
+
+  <div class="stage">
+    <!-- 电梯 -->
+    <div class="elevator-box">
+      <img src="./static/a7.png" alt="电梯轿厢">
+      <div class="magnifier" id="magnifier">
+        🔍 <span class="data" id="data">生成检测报告</span>
+      </div>
+    </div>
+
+    <!-- 电脑 -->
+    <div class="computer">
+      <div class="computer-title" id="computerTitle">电梯体检报告</div>
+      <div class="computer-screen">
+        <div class="report" id="report">📄</div>
+      </div>
+      <div class="computer-stand"></div>
+    </div>
+  </div>
+
+  <div class="control">
+    <button class="btn" id="startBtn">重新演示</button>
+  </div>
+</div>
+
+<script>
+const magnifier = document.getElementById('magnifier');
+const data = document.getElementById('data');
+const report = document.getElementById('report');
+const computerTitle = document.getElementById('computerTitle');
+
+function speak(txt){
+  if(!('speechSynthesis' in window))return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(txt);
+  u.lang='zh-CN';
+  speechSynthesis.speak(u);
+}
+
+function resetScene(){
+  magnifier.style.opacity='0';
+  magnifier.style.transform='scale(0.5)';
+  magnifier.style.animation='none';
+  magnifier.style.left='80px';
+  magnifier.style.top='120px';
+  data.style.opacity='0';
+  data.textContent='';
+  report.style.opacity='0';
+  computerTitle.style.opacity='0';
+  speechSynthesis.cancel();
+}
+
+function playScene() {
+  // 初始文字
+  data.textContent = "电梯监测中...";
+  magnifier.style.opacity = '1';
+  magnifier.style.transform = 'scale(1)';
+  magnifier.style.animation = 'circleElevator 2s forwards';
+  data.style.animation='fadeIn 1s forwards';
+
+  // 2秒后到电脑
+  setTimeout(() => {
+    magnifier.style.animation='none'; 
+    data.textContent = "生成电梯报告";
+
+    // 显示报告 & 标题
+    report.style.opacity='1';
+    computerTitle.style.opacity='1';
+
+    // 放大镜移动
+    magnifier.style.left = "738.922px";
+    magnifier.style.top = "368px";
+    magnifier.style.opacity = "1";
+    magnifier.style.transform = "scale(1)";
+    magnifier.style.zIndex = "200";
+  }, 2000);
+
+  // 3.5秒后语音
+  setTimeout(() => {
+    speak('电梯体检完成，报告已生成到电脑。');
+  }, 3500);
+}
+
+document.getElementById('startBtn').addEventListener('click',()=>{
+  resetScene();
+  setTimeout(playScene,800);
+});
+window.addEventListener('load',()=>{setTimeout(playScene,800);});
+</script>
+</body>
+</html>
